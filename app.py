@@ -254,20 +254,6 @@ ax3.set_xlabel(selected_feature)
 st.pyplot(fig3)
 
 # =========================================================
-# PAIRPLOT VISUALIZATION
-# =========================================================
-
-st.subheader("Pairplot Visualization")
-
-pairplot_fig = sns.pairplot(
-    df,
-    hue="wine_class",
-    palette="Set2"
-)
-
-st.pyplot(pairplot_fig)
-
-# =========================================================
 # STEP 6 - TRAIN TEST SPLIT
 # =========================================================
 
