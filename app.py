@@ -1,5 +1,5 @@
 # =========================================================
-# KNN CLASSIFIER - WINE DATASET
+# KNN CLASSIFIER - WINE DATASET WITH HYPERPARAMETER TUNING
 # =========================================================
 
 # =========================================================
@@ -16,9 +16,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from sklearn.datasets import load_wine
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import (
+    train_test_split,
+    GridSearchCV
+)
+
 from sklearn.preprocessing import StandardScaler
+
 from sklearn.neighbors import KNeighborsClassifier
+
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -61,10 +67,11 @@ using K-Nearest Neighbors (KNN).
 ### Workflow Included
 - Dataset Loading
 - Data Cleaning
-- Preprocessing
+- Data Preprocessing
 - Exploratory Data Analysis
 - Feature Scaling
-- KNN Model Training
+- Hyperparameter Tuning
+- Model Training
 - Prediction
 - Model Evaluation
 """)
@@ -144,7 +151,7 @@ with col2:
 
     st.write(f"Duplicate Rows : {duplicates}")
 
-# Remove duplicates
+# Remove Duplicates
 df.drop_duplicates(inplace=True)
 
 st.success("✅ Data Cleaning Completed Successfully")
@@ -230,7 +237,7 @@ with col2:
     st.pyplot(fig2)
 
 # =========================================================
-# HISTOGRAM VISUALIZATION
+# FEATURE DISTRIBUTION
 # =========================================================
 
 st.subheader("Feature Distribution")
@@ -282,36 +289,134 @@ with col2:
     )
 
 # =========================================================
-# STEP 7 - MODEL TRAINING
+# STEP 7 - HYPERPARAMETER TUNING
 # =========================================================
 
-st.header("🤖 Step 6 : Model Training")
+st.header("🎛️ Step 6 : Hyperparameter Tuning")
 
-k = st.slider(
-    "Select K Value",
-    1,
-    20,
-    5
+param_grid = {
+    "n_neighbors": list(range(1, 21)),
+    "weights": ["uniform", "distance"],
+    "metric": ["euclidean", "manhattan"]
+}
+
+grid_search = GridSearchCV(
+    estimator=KNeighborsClassifier(),
+    param_grid=param_grid,
+    cv=5,
+    scoring="accuracy",
+    n_jobs=-1
 )
 
-model = KNeighborsClassifier(
-    n_neighbors=k
+grid_search.fit(X_train, y_train)
+
+# =========================================================
+# BEST PARAMETERS
+# =========================================================
+
+best_model = grid_search.best_estimator_
+
+st.success("✅ Hyperparameter Tuning Completed")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric(
+        "Best K",
+        grid_search.best_params_["n_neighbors"]
+    )
+
+with col2:
+    st.metric(
+        "Best Weight",
+        grid_search.best_params_["weights"]
+    )
+
+with col3:
+    st.metric(
+        "Best Metric",
+        grid_search.best_params_["metric"]
+    )
+
+# =========================================================
+# BEST CV SCORE
+# =========================================================
+
+st.subheader("Best Cross Validation Accuracy")
+
+st.write(
+    f"{grid_search.best_score_:.4f}"
 )
 
-model.fit(
+# =========================================================
+# TUNING RESULTS
+# =========================================================
+
+results_df = pd.DataFrame(
+    grid_search.cv_results_
+)
+
+st.subheader("Hyperparameter Tuning Results")
+
+st.dataframe(
+    results_df[
+        [
+            "param_n_neighbors",
+            "param_weights",
+            "param_metric",
+            "mean_test_score"
+        ]
+    ].sort_values(
+        by="mean_test_score",
+        ascending=False
+    ).head(10),
+    use_container_width=True
+)
+
+# =========================================================
+# HYPERPARAMETER GRAPH
+# =========================================================
+
+st.subheader("K Value vs Accuracy")
+
+graph_df = results_df[
+    results_df["param_weights"] == "uniform"
+]
+
+fig4, ax4 = plt.subplots(figsize=(8, 5))
+
+ax4.plot(
+    graph_df["param_n_neighbors"],
+    graph_df["mean_test_score"],
+    marker="o"
+)
+
+ax4.set_xlabel("K Value")
+ax4.set_ylabel("Cross Validation Accuracy")
+ax4.set_title("K Value Optimization")
+
+st.pyplot(fig4)
+
+# =========================================================
+# STEP 8 - MODEL TRAINING
+# =========================================================
+
+st.header("🤖 Step 7 : Model Training")
+
+best_model.fit(
     X_train,
     y_train
 )
 
-st.success("KNN Classification Model Trained Successfully")
+st.success("Best KNN Model Trained Successfully")
 
 # =========================================================
-# STEP 8 - MODEL PREDICTIONS
+# STEP 9 - MODEL PREDICTIONS
 # =========================================================
 
-st.header("📌 Step 7 : Predictions")
+st.header("📌 Step 8 : Predictions")
 
-y_pred = model.predict(X_test)
+y_pred = best_model.predict(X_test)
 
 prediction_df = pd.DataFrame({
     "Actual": y_test,
@@ -328,10 +433,10 @@ st.dataframe(
 )
 
 # =========================================================
-# STEP 9 - MODEL EVALUATION
+# STEP 10 - MODEL EVALUATION
 # =========================================================
 
-st.header("📉 Step 8 : Model Evaluation")
+st.header("📉 Step 9 : Model Evaluation")
 
 accuracy = accuracy_score(
     y_test,
@@ -363,7 +468,7 @@ cm = confusion_matrix(
     y_pred
 )
 
-fig4, ax4 = plt.subplots(figsize=(6, 4))
+fig5, ax5 = plt.subplots(figsize=(6, 4))
 
 sns.heatmap(
     cm,
@@ -372,13 +477,13 @@ sns.heatmap(
     cmap="Blues",
     xticklabels=wine_map.values(),
     yticklabels=wine_map.values(),
-    ax=ax4
+    ax=ax5
 )
 
-ax4.set_xlabel("Predicted Label")
-ax4.set_ylabel("Actual Label")
+ax5.set_xlabel("Predicted Label")
+ax5.set_ylabel("Actual Label")
 
-st.pyplot(fig4)
+st.pyplot(fig5)
 
 # =========================================================
 # CLASSIFICATION REPORT
@@ -406,29 +511,29 @@ st.dataframe(
 
 st.subheader("Actual vs Predicted")
 
-fig5, ax5 = plt.subplots(figsize=(8, 5))
+fig6, ax6 = plt.subplots(figsize=(8, 5))
 
-ax5.plot(
+ax6.plot(
     y_test.values,
     label="Actual",
     marker="o"
 )
 
-ax5.plot(
+ax6.plot(
     y_pred,
     label="Predicted",
     marker="x"
 )
 
-ax5.legend()
+ax6.legend()
 
-st.pyplot(fig5)
+st.pyplot(fig6)
 
 # =========================================================
-# STEP 10 - USER PREDICTION
+# STEP 11 - USER PREDICTION
 # =========================================================
 
-st.header("🎯 Step 9 : Predict Wine Class")
+st.header("🎯 Step 10 : Predict Wine Class")
 
 user_input = []
 
@@ -453,7 +558,7 @@ for i in range(len(columns)):
 
 scaled_input = scaler.transform([user_input])
 
-prediction = model.predict(scaled_input)[0]
+prediction = best_model.predict(scaled_input)[0]
 
 predicted_class = wine_map[prediction]
 
